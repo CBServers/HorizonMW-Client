@@ -354,7 +354,9 @@ namespace movement
 			auto anim = pm->ps->weapState[game::WEAPON_HAND_RIGHT].weapAnim;
 			auto anim_two = pm->ps->weapState[game::WEAPON_HAND_LEFT].weapAnim;
 
-			auto should_stall = (pm->ps->sprintState.lastSprintStart > pm->ps->sprintState.lastSprintEnd);
+			//auto should_stall = (pm->ps->sprintState.lastSprintStart > pm->ps->sprintState.lastSprintEnd);
+			auto should_stall = ((pm->cmd.buttons & game::BUTTON_SPRINT) != 0 || (pm->ps->sprintState.lastSprintStart > pm->ps->sprintState.lastSprintEnd));
+			
 			if (should_stall)
 			{
 				keep_anim = true;
