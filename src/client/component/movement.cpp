@@ -360,7 +360,7 @@ namespace movement
 			auto left_anim = pm->ps->weapState[game::WEAPON_HAND_LEFT].weapAnim;
 
 			auto should_sprint_stall = (pm->ps->sprintState.lastSprintStart > pm->ps->sprintState.lastSprintEnd);
-			auto should_still_stall = (right_anim == game::WEAP_ANIM_EMPTY_IDLE || left_anim == game::WEAP_ANIM_EMPTY_IDLE);
+			auto should_still_stall = (right_anim == game::WEAP_ANIM_EMPTY_IDLE || left_anim == game::WEAP_ANIM_EMPTY_IDLE || (pm->cmd.buttons & game::BUTTON_SPRINT) != 0);
 			if (should_sprint_stall || should_still_stall)
 			{
 				stall_anim = true;
