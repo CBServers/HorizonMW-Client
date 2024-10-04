@@ -1,6 +1,6 @@
 [submodule "deps/GSL"]
 	path = deps/GSL
-	url = https://github.com/Microsoft/GSL.git
+	url = https://github.com/microsoft/GSL.git
 [submodule "deps/rapidjson"]
 	path = deps/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
@@ -12,7 +12,7 @@
 	url = https://github.com/TsudaKageyu/minhook.git
 [submodule "deps/discord-rpc"]
 	path = deps/discord-rpc
-	url = https://github.com/fedddddd/discord-rpc.git
+	url = https://github.com/alicealys/discord-rpc.git
 [submodule "deps/asmjit"]
 	path = deps/asmjit
 	url = https://github.com/asmjit/asmjit.git
@@ -51,3 +51,15 @@
 [submodule "deps/imgui"]
 	path = deps/imgui
 	url = https://github.com/fedddddd/imgui
+[submodule "deps/mongoose"]
+	path = deps/mongoose
+	url = https://github.com/cesanta/mongoose.git
+[submodule "deps/DirectXTex"]
+	path = deps/DirectXTex
+	url = https://github.com/microsoft/DirectXTex.git
+[submodule "deps/lua"]
+	path = deps/lua
+	url = https://github.com/lua/lua.git
+[submodule "deps/sol2"]
+	path = deps/sol2
+	url = https://github.com/ThePhD/sol2.git
