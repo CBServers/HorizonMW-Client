@@ -8,6 +8,8 @@
 #include <utils/string.hpp>
 #include <utils/properties.hpp>
 
+#include <updater/updater.hpp>
+
 DECLSPEC_NORETURN void WINAPI exit_hook(const int code)
 {
 	component_loader::pre_destroy();
@@ -243,8 +245,11 @@ int main()
 		});
 
 		try
-		{
+		{	
+			
 			if (!component_loader::post_start()) return 0;
+
+			updater::run();
 
 			auto mode = detect_mode_from_arguments();
 

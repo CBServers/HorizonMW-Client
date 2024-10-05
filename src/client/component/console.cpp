@@ -352,7 +352,7 @@ namespace console
 			ShowWindow(GetConsoleWindow(), SW_HIDE);
 		}
 
-		void post_unpack() override
+		void post_start() override
 		{
 			printf_hook.create(printf, printf_stub);
 

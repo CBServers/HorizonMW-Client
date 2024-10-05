@@ -219,7 +219,7 @@ newaction {
 
 dependencies.load()
 
-workspace "h2m-mod"
+workspace "h2m-mod-cb"
 startproject "client"
 location "./build"
 objdir "%{wks.location}/obj"
@@ -259,7 +259,7 @@ filter "configurations:Release"
 	buildoptions {"/GL"}
 	linkoptions { "/IGNORE:4702", "/LTCG" }
 	defines {"NDEBUG"}
-	flags {"FatalCompileWarnings"}
+	--flags {"FatalCompileWarnings"}
 filter {}
 
 filter "configurations:Debug"
@@ -298,7 +298,7 @@ project "client"
 kind "ConsoleApp"
 language "C++"
 
-targetname "h2m-mod"
+targetname "h2m-mod-cb"
 
 pchheader "std_include.hpp"
 pchsource "src/client/std_include.cpp"
