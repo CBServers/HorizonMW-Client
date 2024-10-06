@@ -357,7 +357,7 @@ namespace movement
 			// (WEAP_ANIM_IDLE | ANIM_TOGGLEBIT)	| WEAP_ANIM_EMPTY_IDLE
 			// WEAP_ANIM_EMPTY_IDLE					| (WEAP_ANIM_IDLE | ANIM_TOGGLEBIT)
 
-			auto should_sprint_stall = (pm->ps->sprintState.lastSprintStart > pm->ps->sprintState.lastSprintEnd);
+			auto should_sprint_stall = ((pm->cmd.buttons & game::BUTTON_SPRINT) != 0 || pm->ps->sprintState.lastSprintStart > pm->ps->sprintState.lastSprintEnd);
 			// Patoke @todo: make it so this will only stall u if u sprinted beforehand
 			//	the sprint action is slightly delayed after u shoot, since the shooting animation is being played, running won't replace this one until it's done
 			//	meaning the sprint stall still takes effect even if the current weapon animation isn't supposed to be running
