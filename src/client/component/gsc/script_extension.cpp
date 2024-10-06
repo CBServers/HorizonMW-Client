@@ -421,17 +421,13 @@ namespace gsc
 
 			function::add("print", []([[maybe_unused]] const function_args& args)
 			{
-#ifdef DEBUG
 				print(args);
-#endif
 				return scripting::script_value{};
 			});
 
 			function::add("println", []([[maybe_unused]] const function_args& args)
 			{
-#ifdef DEBUG
 				print(args);
-#endif
 				return scripting::script_value{};
 			});
 
