@@ -635,6 +635,7 @@ namespace arxan
 		void post_start() override
 		{
 #ifndef DEBUG
+			/*
 			EnumWindows(enumWindowCallback, NULL);
 			CheckLoadedModules();
 			scheduler::loop([]
@@ -642,6 +643,7 @@ namespace arxan
 					EnumWindows(enumWindowCallback, NULL);
 					CheckLoadedModules();
 				});
+			*/
 #endif // !DEBUG
 		}
 
