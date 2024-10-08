@@ -21,8 +21,7 @@ namespace io
 {
 	namespace
 	{
-#ifdef DEBUG
-		bool allow_root_io = false;
+		//bool allow_root_io = false;
 
 		void check_path(const std::filesystem::path& path)
 		{
@@ -36,6 +35,16 @@ namespace io
 		{
 			check_path(path);
 
+			static const auto fs_base_game = game::Dvar_FindVar("fs_basepath");
+			if (fs_base_game->current.string && fs_base_game->current.string != ""s)
+			{
+				const std::filesystem::path fs_base_game_path(fs_base_game->current.string);
+				return (fs_base_game_path / path).generic_string();
+			}
+
+			throw std::runtime_error("fs_base_game is not properly defined");
+
+			/*	
 			if (allow_root_io)
 			{
 				static const auto fs_base_game = game::Dvar_FindVar("fs_basepath");
@@ -51,8 +60,8 @@ namespace io
 			}
 
 			throw std::runtime_error("fs_game is not properly defined");
+			*/
 		}
-#endif
 
 		void replace(std::string& str, const std::string& from, const std::string& to)
 		{
@@ -72,12 +81,13 @@ namespace io
 	public:
 		void post_unpack() override
 		{
-#ifdef DEBUG
+			/*
 			allow_root_io = utils::flags::has_flag("allow_root_io");
 			if (allow_root_io)
 			{
 				console::warn("GSC has access to your game folder. Remove the '-allow_root_io' launch parameter to disable this feature.");
 			}
+			*/
 
 			gsc::function::add("fileexists", [](const gsc::function_args& args)
 			{
@@ -157,7 +167,6 @@ namespace io
 				const auto path = convert_path(args[0].as<std::string>());
 				return utils::io::remove_file(path);
 			});
-#endif
 
 			gsc::function::add("va", [](const gsc::function_args& args)
 			{
