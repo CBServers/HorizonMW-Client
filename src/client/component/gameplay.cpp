@@ -405,11 +405,13 @@ namespace gameplay
 			utils::hook::set<uint32_t>(0x2CC609_b + 6, game::BG_GetPerkBit(game::PERK_LONGERSPRINT)); // PM_GetSprintLeft
 			utils::hook::set<uint32_t>(0x2CFAD7_b + 6, game::BG_GetPerkBit(game::PERK_LONGERSPRINT)); // PM_UpdateSprint
 
-			// override PERK_COLDBLOODED mention for PERK_RADARIMMUNE, this is a bitshift, 13 is PERK_COLDBLOODED
-			utils::hook::set<uint8_t>(0x1160D9_b + 2, 14); // CG_Player
+			// override PERK_COLDBLOODED mention for PERK_RADARIMMUNE, this is a bitshift, 0x13 is PERK_COLDBLOODED
+			// this disables thermal vision
+			utils::hook::set<uint8_t>(0x1160D9_b + 2, 0x14); // CG_Player
 
-			// skip PERK_PLAINSIGHT check (unused perk)
-			utils::hook::set<uint8_t>(0x1160EC_b, 0xEB); // CG_Player
+			// override perk bit of PERK_COLDBLOODED for PERK_RADARIMMUNE
+			// this disables red overlay over players (doesn't seem to work?)
+			utils::hook::set<uint32_t>(0x11607C_b + 3, game::BG_GetPerkBit(game::PERK_RADARIMMUNE)); // CG_Player
 
 #ifdef DEBUG
 			// Make noclip work
