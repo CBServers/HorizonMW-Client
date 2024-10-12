@@ -9,11 +9,17 @@
 #include <utils/http.hpp>
 #include <utils/io.hpp>
 #include <utils/concurrency.hpp>
+#include <utils/hash.hpp>
 
-#define UPDATE_SERVER "https://github.com/CBServers/updater/raw/main/updater/"
+#define UPDATE_SERVER "https://cdn.brad.stream/"
+#define UPDATE_SERVER_HOST "https://github.com/CBServers/updater/raw/main/updater/"
 
 #define UPDATE_FILE_MAIN UPDATE_SERVER "h2m.json"
 #define UPDATE_FOLDER_MAIN UPDATE_SERVER "h2m/"
+
+#define UPDATE_FILE_HOST UPDATE_SERVER_HOST "h2m.json"
+#define UPDATE_FOLDER_HOST UPDATE_SERVER_HOST "h2m/"
+
 #define UPDATE_HOST_BINARY "h2m-mod-cb.exe"
 
 namespace updater
@@ -28,6 +34,21 @@ namespace updater
 		std::string get_update_folder()
 		{
 			return UPDATE_FOLDER_MAIN;
+		}
+
+		std::string get_update_file_host()
+		{
+			return UPDATE_FILE_HOST;
+		}
+
+		std::string get_update_folder_host()
+		{
+			return UPDATE_FOLDER_HOST;
+		}
+
+		std::string get_filename(const std::filesystem::path path)
+		{
+			return path.filename().string();
 		}
 
 		std::vector<file_info> parse_file_infos(const std::string& json)
@@ -62,6 +83,49 @@ namespace updater
 			return files;
 		}
 
+		update_manifest parse_manifest(const std::string& json)
+		{
+			update_manifest manifest;
+
+			rapidjson::Document doc{};
+			doc.Parse(json.data(), json.size());
+
+			if (doc.HasParseError() || !doc.IsObject())
+			{
+				return {};
+			}
+
+			if (doc.HasMember("ManifestHash") && doc["ManifestHash"].IsString())
+			{
+				manifest.hash = doc["ManifestHash"].GetString();
+			}
+			else
+			{
+				return {};
+			}
+
+			if (doc.HasMember("files") && doc["files"].IsArray())
+			{
+				const rapidjson::Value& filesArray = doc["files"];
+				for (rapidjson::SizeType i = 0; i < filesArray.Size(); ++i)
+				{
+					const rapidjson::Value& fileEntry = filesArray[i];
+					file_info info;
+					info.name = fileEntry[0].GetString();
+					info.size = fileEntry[1].GetUint64();
+					info.hash = fileEntry[2].GetString();
+
+					manifest.files.push_back(info);
+				}
+			}
+			else
+			{
+				return {};
+			}
+
+			return manifest;
+		}
+
 		std::string get_cache_buster()
 		{
 			return "?" + std::to_string(
@@ -71,7 +135,7 @@ namespace updater
 
 		std::vector<file_info> get_file_infos()
 		{
-			const auto data = utils::http::get_data(get_update_file() + get_cache_buster());
+			const auto data = utils::http::get_data(get_update_file_host() + get_cache_buster());
 			if (!data || !data.has_value())
 			{
 				return {};
@@ -91,17 +155,21 @@ namespace updater
 			return utils::cryptography::sha1::compute(data, true);
 		}
 
-		const file_info* find_host_file_info(const std::vector<file_info>& outdated_files)
+		update_manifest get_manifest()
 		{
-			for (const auto& file : outdated_files)
+			const auto data = utils::http::get_data(get_update_file() + get_cache_buster());
+			if (!data || !data.has_value())
 			{
-				if (file.name == UPDATE_HOST_BINARY)
-				{
-					return &file;
-				}
+				return {};
 			}
 
-			return nullptr;
+			const auto& result = data.value();
+			if (result.code != CURLE_OK)
+			{
+				return {};
+			}
+
+			return parse_manifest(result.buffer);
 		}
 
 		size_t get_optimal_concurrent_download_count(const size_t file_count)
@@ -131,20 +199,42 @@ namespace updater
 
 	void file_updater::run() const
 	{
-		const auto files = get_file_infos();
-		if (files.empty())
+		const auto host_files = get_file_infos();
+		if (host_files.empty())
 		{
 			return;
 		}
 
-		const auto outdated_files = this->get_outdated_files(files);
+		this->update_host_binary(host_files);
+
+		const auto manifest = get_manifest();
+		if (manifest.empty())
+		{
+			return;
+		}
+		
+		if (!utils::flags::has_flag("verify"))
+		{
+			if (!this->needs_to_update(manifest.hash))
+			{
+				return;
+			}
+
+			MSG_BOX_INFO("GAME UPDATE REQUIRED!\nPlease wait for update to complete before you can start playing.\nClick OK to continue.");
+		}
+		
+		console::info("Verifying files, please wait...");
+		const auto outdated_files = this->get_outdated_files(manifest.files);
 		if (outdated_files.empty())
 		{
+			utils::io::write_file(this->get_manifest_file_path(), manifest.hash);
 			return;
 		}
 
-		this->update_host_binary(outdated_files);
+		console::info("Found outdated files!");
 		this->update_files(outdated_files);
+
+		utils::io::write_file(this->get_manifest_file_path(), manifest.hash);
 
 		std::this_thread::sleep_for(1s);
 	}
@@ -152,17 +242,79 @@ namespace updater
 	void file_updater::update_file(const file_info& file) const
 	{
 		const auto url = get_update_folder() + file.name + "?" + file.hash;
+		const auto out_file = this->get_drive_filename(file);
+
+		std::string empty{};
+		if (!utils::io::write_file(out_file, empty, false))
+		{
+			throw std::runtime_error("Failed to write file: " + out_file);
+		}
+
+		std::ofstream ofs(out_file, std::ios::binary);
+		if (!ofs)
+		{
+			throw std::runtime_error("Failed to open file: " + out_file);
+		}
+
+		int currentPercent = 0;
+		const auto data = utils::http::get_data_stream(url, {}, {}, [&](size_t progress, size_t total_size, size_t speed)
+		{
+			auto progressRatio = (total_size > 0 && progress >= 0) ? static_cast<double>(progress) / total_size : 0.0;
+			auto progressPercent = int(progressRatio * 100.0);
+			if (progressPercent == currentPercent)
+				return;
+
+			currentPercent = progressPercent;
+			console::info("Updating: %s (%d%%)", get_filename(file.name).data(), progressPercent);
+		},
+		[&](const char* chunk, size_t size)
+		{
+			if (chunk && size > 0)
+			{
+				ofs.write(chunk, size);
+			}
+
+		});
+
+		ofs.close();
+
+		if (!data || !data.has_value())
+		{
+			throw std::runtime_error("Failed to download: " + url);
+		}
+
+		const auto& result = data.value();
+		if (result.code != CURLE_OK)
+		{
+			throw std::runtime_error("Failed to download: " + url);
+		}
+
+		if (utils::io::file_size(out_file) != file.size)
+		{
+			throw std::runtime_error("Downloaded file size mismatch: " + out_file);
+		}
+
+		if (utils::hash::get_file_hash(out_file) != file.hash)
+		{
+			throw std::runtime_error("Downloaded file hash mismatch: " + out_file);
+		}
+
+	}
+
+	void file_updater::update_host_file(const file_info& file) const
+	{
+		const auto url = get_update_folder_host() + file.name + "?" + file.hash;
 
 		int currentPercent = 0;
 		const auto data = utils::http::get_data(url, {}, {}, [&](const size_t progress, const size_t total, const size_t speed)
 		{
-				auto progressRatio = (total > 0 && progress >= 0) ? static_cast<double>(progress) / total : 0.0;
-				auto progressPercent = int(progressRatio * 100.0);
-				if (progressPercent == currentPercent)
-					return;
+			auto progressRatio = (total > 0 && progress >= 0) ? static_cast<double>(progress) / total : 0.0;
+			auto progressPercent = int(progressRatio * 100.0);
+			if (progressPercent == currentPercent)
+				return;
 
-				currentPercent = progressPercent;
-				console::info("Updating: %s (%d%%)", file.name.data(), progressPercent);
+			currentPercent = progressPercent;
+			console::info("Updating: %s (%d%%)", file.name.data(), progressPercent);
 		});
 
 		if (!data || !data.has_value())
@@ -198,18 +350,69 @@ namespace updater
 		return outdated_files;
 	}
 
-	void file_updater::update_host_binary(const std::vector<file_info>& outdated_files) const
+	const file_info* file_updater::find_outdated_host(const std::vector<file_info>& files) const
 	{
-		const auto* host_file = find_host_file_info(outdated_files);
+		for (const auto& file : files)
+		{
+			if (file.name != UPDATE_HOST_BINARY)
+			{
+				continue;
+			}
+
+			std::string data{};
+			const auto drive_name = this->get_drive_filename(file);
+			if (!utils::io::read_file(drive_name, &data))
+			{
+				return &file;
+			}
+
+			if (data.size() != file.size)
+			{
+				return &file;
+			}
+
+			if (get_hash(data) != file.hash)
+			{
+				return &file;
+			}
+		}
+
+		return nullptr;
+	}
+
+	bool file_updater::needs_to_update(const std::string& hash) const
+	{
+		const auto manifest_path = this->get_manifest_file_path();
+		if (utils::io::file_exists(manifest_path))
+		{
+			auto manifest_hash = utils::io::read_file(manifest_path);
+
+			if (manifest_hash.empty())
+			{
+				return true;
+			}
+
+			if (manifest_hash == hash)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	void file_updater::update_host_binary(const std::vector<file_info>& files) const
+	{
+		const auto* host_file = this->find_outdated_host(files);
 		if (!host_file)
 		{
 			return;
 		}
-
+		
 		try
 		{
 			this->move_current_process_file();
-			this->update_files({*host_file});
+			this->update_host_file(*host_file);
 		}
 		catch (...)
 		{
@@ -297,20 +500,19 @@ namespace updater
 			return false;
 		}
 #endif
-
-		std::string data{};
+		console::info("Verifying: %s\n", get_filename(file.name).data());
 		const auto drive_name = this->get_drive_filename(file);
-		if (!utils::io::read_file(drive_name, &data))
+		if (!utils::io::file_exists(drive_name))
 		{
 			return true;
 		}
 
-		if (data.size() != file.size)
+		if (utils::io::file_size(drive_name) != file.size)
 		{
 			return true;
 		}
 
-		const auto hash = get_hash(data);
+		const auto hash = utils::hash::get_file_hash(drive_name);
 		return hash != file.hash;
 	}
 
@@ -322,6 +524,11 @@ namespace updater
 		}
 
 		return (this->base_ / file.name).string();
+	}
+
+	std::string file_updater::get_manifest_file_path() const
+	{
+		return (this->base_ / "latest.manifest").string();
 	}
 
 	void file_updater::move_current_process_file() const
