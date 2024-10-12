@@ -2,12 +2,26 @@
 #include "loader/component_loader.hpp"
 
 #include "updater.hpp"
+#include "console.hpp"
 
 #include <utils/flags.hpp>
 #include <updater/updater.hpp>
+#include <utils/io.hpp>
 
 namespace updater
 {
+	bool has_mwr()
+	{
+		if (!utils::io::file_exists("h1_mp64_ship.exe"))
+		{
+			const auto error = "Can't find a valid h1_mp64_ship.exe.\nMake sure you put h2m-mod-cb.exe in your Modern Warfare Remastered installation folder.";
+			console::error(error);
+			return false;
+		}
+
+		return true;
+	}
+
 	void update()
 	{
 		if (utils::flags::has_flag("noupdate"))
@@ -17,11 +31,14 @@ namespace updater
 
 		try
 		{
-			run();
+			if (has_mwr())
+			{
+				run();
+			}
 		}
 		catch (...)
 		{
-			utils::nt::terminate();
+
 		}
 	}
 

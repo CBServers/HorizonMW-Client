@@ -10,6 +10,7 @@
 #include <utils/io.hpp>
 #include <utils/concurrency.hpp>
 #include <utils/hash.hpp>
+#include <utils/string.hpp>
 
 #define UPDATE_SERVER "https://cdn.brad.stream/"
 #define UPDATE_SERVER_HOST "https://github.com/CBServers/updater/raw/main/updater/"
@@ -231,6 +232,14 @@ namespace updater
 			return;
 		}
 
+		const auto update_size = this->get_update_size(outdated_files);
+		const auto drive_space = this->get_available_drive_space();
+		if (drive_space < update_size)
+		{
+			double gigabytes = static_cast<double>(update_size) / (1024 * 1024 * 1024);
+			throw std::runtime_error(utils::string::va("Not enough space for update! %.2f GB required.", gigabytes));
+		}
+
 		console::info("Found outdated files!");
 		this->update_files(outdated_files);
 
@@ -426,6 +435,23 @@ namespace updater
 		}
 
 		utils::nt::terminate();
+	}
+
+	std::size_t file_updater::get_update_size(const std::vector<file_info>& outdated_files) const
+	{
+		std::size_t total_size = 0;
+		for (const auto& file : outdated_files)
+		{
+			total_size += file.size;
+		}
+
+		return total_size;
+	}
+
+	std::size_t file_updater::get_available_drive_space() const
+	{
+		std::filesystem::space_info spaceInfo = std::filesystem::space(this->base_);
+		return spaceInfo.available;
 	}
 
 	void file_updater::update_files(const std::vector<file_info>& outdated_files) const
