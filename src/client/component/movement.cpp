@@ -425,7 +425,7 @@ namespace movement
 			auto* cg_array = game::getCGArray();
 			auto* playerstate = &cg_array[local_client_num].predictedPlayerState;
 
-			auto should_sprint = (playerstate->sprintState.lastSprintStart < playerstate->sprintState.lastSprintEnd);
+			auto should_sprint = (playerstate->sprintState.lastSprintStart <= playerstate->sprintState.lastSprintEnd);
 
 			auto do_glide =
 				blend_out_anim_index == game::WEAP_ANIM_SPRINT_IN || // allow glides on sprint drop
