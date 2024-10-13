@@ -225,6 +225,9 @@ namespace updater
 		}
 		
 		console::info("Verifying files, please wait...");
+
+		this->delete_old_h2m_files(); //do this for those migrating to hmw, will remove eventually 
+
 		const auto outdated_files = this->get_outdated_files(manifest.files);
 		if (outdated_files.empty())
 		{
@@ -361,6 +364,12 @@ namespace updater
 
 	const file_info* file_updater::find_outdated_host(const std::vector<file_info>& files) const
 	{
+#if !defined(NDEBUG)
+		if (!utils::flags::has_flag("update"))
+		{
+			return nullptr;
+		}
+#endif
 		for (const auto& file : files)
 		{
 			if (file.name != UPDATE_HOST_BINARY)
@@ -520,12 +529,6 @@ namespace updater
 
 	bool file_updater::is_outdated_file(const file_info& file) const
 	{
-#if !defined(NDEBUG)
-		if (file.name == UPDATE_HOST_BINARY && !utils::flags::has_flag("update"))
-		{
-			return false;
-		}
-#endif
 		console::info("Verifying: %s\n", get_filename(file.name).data());
 		const auto drive_name = this->get_drive_filename(file);
 		if (!utils::io::file_exists(drive_name))
@@ -584,6 +587,25 @@ namespace updater
 			}
 
 			std::this_thread::sleep_for(2s);
+		}
+	}
+
+	void file_updater::delete_old_h2m_files() const
+	{
+		//do this for those migrating to hmw, will remove eventually 
+		const auto zone_folder = (this->base_ / "zone").string();
+		if (!utils::io::directory_exists(zone_folder))
+		{
+			return;
+		}
+
+		const auto zone_files = utils::io::list_files_recursively(zone_folder);
+		for (const auto& file : zone_files)
+		{
+			if (get_filename(file).contains("h2m_"))
+			{
+				utils::io::remove_file(file);
+			}
 		}
 	}
 }

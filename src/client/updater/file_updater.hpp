@@ -38,5 +38,7 @@ namespace updater
 		void move_current_process_file() const;
 		void restore_current_process_file() const;
 		void delete_old_process_file() const;
+
+		void delete_old_h2m_files() const;
 	};
 }
