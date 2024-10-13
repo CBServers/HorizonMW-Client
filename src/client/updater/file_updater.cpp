@@ -228,7 +228,12 @@ namespace updater
 				return;
 			}
 
-			MSG_BOX_INFO("GAME UPDATE REQUIRED!\nPlease wait for update to complete before you can start playing.\nClick OK to continue.");
+			if (!utils::flags::has_flag("dedicated")) //dont show popup on dedi
+			{
+				MessageBoxA(nullptr, 
+					"GAME UPDATE REQUIRED!\nPlease wait for update to complete before you can start playing.\nClick OK to continue.",
+					"h2m-mod: UPDATE REQUIRED", MB_ICONINFORMATION);
+			}
 		}
 
 		this->delete_old_h2m_files(); //do this for those migrating to hmw, will remove eventually 
