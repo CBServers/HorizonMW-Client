@@ -223,8 +223,6 @@ namespace updater
 
 			MSG_BOX_INFO("GAME UPDATE REQUIRED!\nPlease wait for update to complete before you can start playing.\nClick OK to continue.");
 		}
-		
-		console::info("Verifying files, please wait...");
 
 		this->delete_old_h2m_files(); //do this for those migrating to hmw, will remove eventually 
 
@@ -243,7 +241,6 @@ namespace updater
 			throw std::runtime_error(utils::string::va("Not enough space for update! %.2f GB required.", gigabytes));
 		}
 
-		console::info("Found outdated files!");
 		this->update_files(outdated_files);
 
 		utils::io::write_file(this->get_manifest_file_path(), manifest.hash);
@@ -349,15 +346,74 @@ namespace updater
 
 	std::vector<file_info> file_updater::get_outdated_files(const std::vector<file_info>& files) const
 	{
-		std::vector<file_info> outdated_files{};
+		const auto thread_count = get_optimal_concurrent_download_count(files.size());
+		std::vector<std::thread> threads{};
+		std::atomic<size_t> current_index{ 0 };
+		std::vector<std::vector<file_info>> per_thread_outdated_files(thread_count);
+		utils::concurrency::container<std::exception_ptr> exception{};
 
-		for (const auto& info : files)
+		console::info("Verifying files, please wait...");
+
+		for (size_t i = 0; i < thread_count; ++i)
 		{
-			if (this->is_outdated_file(info))
+			threads.emplace_back([&, i]()
 			{
-				outdated_files.emplace_back(info);
+				auto& local_outdated_files = per_thread_outdated_files[i];
+
+				while (!exception.access<bool>([](const std::exception_ptr& ptr)
+				{
+					return static_cast<bool>(ptr);
+				}))
+				{
+					const auto index = current_index++;
+					if (index >= files.size())
+					{
+						break;
+					}
+
+					try
+					{
+						const auto& info = files[index];
+						if (this->is_outdated_file(info))
+						{
+							local_outdated_files.emplace_back(info);
+						}
+					}
+					catch (...)
+					{
+						exception.access([](std::exception_ptr& ptr)
+						{
+							ptr = std::current_exception();
+						});
+						return;
+					}
+				}
+			});
+		}
+
+		for (auto& thread : threads)
+		{
+			if (thread.joinable())
+			{
+				thread.join();
 			}
 		}
+
+		exception.access([](const std::exception_ptr& ptr)
+		{
+			if (ptr)
+			{
+				std::rethrow_exception(ptr);
+			}
+		});
+
+		std::vector<file_info> outdated_files;
+		for (const auto& thread_files : per_thread_outdated_files)
+		{
+			outdated_files.insert(outdated_files.end(), thread_files.begin(), thread_files.end());
+		}
+
+		console::info("Finished verifying files");
 
 		return outdated_files;
 	}
@@ -473,7 +529,7 @@ namespace updater
 
 		utils::concurrency::container<std::exception_ptr> exception{};
 
-		console::info("Downloading/updating files...");
+		console::info("Found outdated files! Downloading/updating files...");
 
 		for (size_t i = 0; i < thread_count; ++i)
 		{
