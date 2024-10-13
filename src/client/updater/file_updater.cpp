@@ -52,6 +52,13 @@ namespace updater
 			return path.filename().string();
 		}
 
+		void throw_error(const std::string error)
+		{
+			console::error(error.data());
+			MSG_BOX_ERROR(error.data());
+			utils::nt::terminate();
+		}
+
 		std::vector<file_info> parse_file_infos(const std::string& json)
 		{
 			rapidjson::Document doc{};
@@ -238,7 +245,7 @@ namespace updater
 		if (drive_space < update_size)
 		{
 			double gigabytes = static_cast<double>(update_size) / (1024 * 1024 * 1024);
-			throw std::runtime_error(utils::string::va("Not enough space for update! %.2f GB required.", gigabytes));
+			throw_error(utils::string::va("Not enough space for update! %.2f GB required.", gigabytes));
 		}
 
 		this->update_files(outdated_files);
@@ -256,13 +263,13 @@ namespace updater
 		std::string empty{};
 		if (!utils::io::write_file(out_file, empty, false))
 		{
-			throw std::runtime_error("Failed to write file: " + out_file);
+			throw_error("Failed to write file: " + out_file);
 		}
 
 		std::ofstream ofs(out_file, std::ios::binary);
 		if (!ofs)
 		{
-			throw std::runtime_error("Failed to open file: " + out_file);
+			throw_error("Failed to open file: " + out_file);
 		}
 
 		int currentPercent = 0;
@@ -289,23 +296,23 @@ namespace updater
 
 		if (!data || !data.has_value())
 		{
-			throw std::runtime_error("Failed to download: " + url);
+			throw_error("Failed to download: " + url);
 		}
 
 		const auto& result = data.value();
 		if (result.code != CURLE_OK)
 		{
-			throw std::runtime_error("Failed to download: " + url);
+			throw_error("Failed to download: " + url);
 		}
 
 		if (utils::io::file_size(out_file) != file.size)
 		{
-			throw std::runtime_error("Downloaded file size mismatch: " + out_file);
+			throw_error("Downloaded file size mismatch: " + out_file);
 		}
 
 		if (utils::hash::get_file_hash(out_file) != file.hash)
 		{
-			throw std::runtime_error("Downloaded file hash mismatch: " + out_file);
+			throw_error("Downloaded file hash mismatch: " + out_file);
 		}
 
 	}
@@ -328,19 +335,19 @@ namespace updater
 
 		if (!data || !data.has_value())
 		{
-			throw std::runtime_error("Failed to download: " + url);
+			throw_error("Failed to download: " + url);
 		}
 
 		const auto& result = data.value();
 		if (result.code != CURLE_OK || result.buffer.size() != file.size || get_hash(result.buffer) != file.hash)
 		{
-			throw std::runtime_error("Failed to download: " + url);
+			throw_error("Failed to download: " + url);
 		}
 
 		const auto out_file = this->get_drive_filename(file);
 		if (!utils::io::write_file(out_file, result.buffer, false))
 		{
-			throw std::runtime_error("Failed to write: " + file.name);
+			throw_error("Failed to write: " + file.name);
 		}
 	}
 
@@ -376,6 +383,7 @@ namespace updater
 						const auto& info = files[index];
 						if (this->is_outdated_file(info))
 						{
+							console::error("Verification failed: %s", get_filename(info.name).data());
 							local_outdated_files.emplace_back(info);
 						}
 					}
