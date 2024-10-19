@@ -46,11 +46,11 @@ namespace filesystem
 			initialized = true;
 
 			filesystem::register_path(L".");
-			filesystem::register_path(L"h2m-mod");
+			filesystem::register_path(L"hmw-mod");
 
 			// TODO: enable these for release
 #ifdef DEBUG
-			filesystem::register_path(L"h2m-mod-rawfiles"); // git repo in gamefiles lul
+			filesystem::register_path(L"hmw-mod-rawfiles"); // git repo in gamefiles lul
 			filesystem::register_path(L"devraw");
 			filesystem::register_path(L"devraw_shared");
 #endif

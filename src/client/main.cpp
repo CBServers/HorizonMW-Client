@@ -91,7 +91,7 @@ FARPROC load_binary(const launcher::mode mode, uint64_t* base_address)
 				}
 				else
 				{
-					throw std::runtime_error("Could not find Steam in the registry. If Steam is not installed, you must install it for H2M-Mod to work.");
+					throw std::runtime_error("Could not find Steam in the registry. If Steam is not installed, you must install it for HorizonMW to work.");
 				}
 
 				check_for_steam_install = true;
