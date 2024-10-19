@@ -215,6 +215,9 @@ namespace updater
 
 		this->update_host_binary(host_files);
 
+		this->delete_old_h2m_files(); //do this for those migrating to hmw, will remove eventually 
+		this->migrate_to_hmw_naming(); //migrate to the hmw file naming, will remove eventually 
+
 		const auto manifest = get_manifest();
 		if (manifest.empty())
 		{
@@ -232,11 +235,9 @@ namespace updater
 			{
 				MessageBoxA(nullptr, 
 					"GAME UPDATE REQUIRED!\nPlease wait for update to complete before you can start playing.\nClick OK to continue.",
-					"h2m-mod: UPDATE REQUIRED", MB_ICONINFORMATION);
+					"hmw-mod: UPDATE REQUIRED", MB_ICONINFORMATION);
 			}
 		}
-
-		this->delete_old_h2m_files(); //do this for those migrating to hmw, will remove eventually 
 
 		const auto outdated_files = this->get_outdated_files(manifest.files);
 		if (outdated_files.empty())
@@ -671,9 +672,77 @@ namespace updater
 		const auto zone_files = utils::io::list_files_recursively(zone_folder);
 		for (const auto& file : zone_files)
 		{
+			if (!std::filesystem::is_regular_file(file))
+			{
+				continue;
+			}
+
 			if (get_filename(file).contains("h2m_"))
 			{
 				utils::io::remove_file(file);
+			}
+		}
+	}
+
+	void file_updater::migrate_to_hmw_naming() const
+	{
+		//migrate to the hmw file naming, will remove eventually 
+		const auto zone_folder = (this->base_ / "h2m-mod" / "zone").string();
+		if (utils::io::directory_exists(zone_folder))
+		{
+			const auto zone_files = utils::io::list_files_recursively(zone_folder);
+			for (const auto& file : zone_files)
+			{
+				if (!std::filesystem::is_regular_file(file))
+				{
+					continue;
+				}
+
+				if (get_filename(file).contains("h2m"))
+				{	
+					const std::filesystem::path old_file_path = file;
+					const std::string file_name = utils::string::replace(get_filename(file), "h2m", "hmw");
+					const std::filesystem::path new_file_path = old_file_path.parent_path() / file_name;
+					if (!utils::io::file_exists(new_file_path.string()))
+					{
+						std::filesystem::rename(old_file_path, new_file_path);
+					}
+					else
+					{
+						utils::io::remove_file(file);
+					}
+				}
+			}
+		}
+
+		const auto h2m_folder = (this->base_ / "h2m-mod").string();
+		if (utils::io::directory_exists(h2m_folder))
+		{
+			const std::filesystem::path old_folder_path = h2m_folder;
+			const std::filesystem::path new_folder_path = old_folder_path.parent_path() / "hmw-mod";
+			if (!utils::io::directory_exists(new_folder_path.string()))
+			{
+				std::filesystem::rename(old_folder_path, new_folder_path);
+			}
+			else
+			{
+				utils::io::remove_directory(h2m_folder);
+			}
+			
+		}
+
+		const auto usermaps_folder = (this->base_ / "h2m-usermaps").string();
+		if (utils::io::directory_exists(usermaps_folder))
+		{
+			const std::filesystem::path old_folder_path = usermaps_folder;
+			const std::filesystem::path new_folder_path = old_folder_path.parent_path() / "hmw-usermaps";
+			if (!utils::io::directory_exists(new_folder_path.string()))
+			{
+				std::filesystem::rename(old_folder_path, new_folder_path);
+			}
+			else
+			{
+				utils::io::remove_directory(usermaps_folder);
 			}
 		}
 	}

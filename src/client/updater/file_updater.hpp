@@ -40,5 +40,6 @@ namespace updater
 		void delete_old_process_file() const;
 
 		void delete_old_h2m_files() const;
+		void migrate_to_hmw_naming() const;
 	};
 }
