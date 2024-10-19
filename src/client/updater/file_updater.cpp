@@ -679,7 +679,17 @@ namespace updater
 
 			if (get_filename(file).contains("h2m_"))
 			{
-				utils::io::remove_file(file);
+				try
+				{
+					utils::io::remove_file(file);
+				}
+				catch (const std::exception& e)
+				{
+					console::error(e.what());
+				}
+				catch (...)
+				{
+				}
 			}
 		}
 	}
@@ -699,17 +709,28 @@ namespace updater
 				}
 
 				if (get_filename(file).contains("h2m"))
-				{	
+				{
 					const std::filesystem::path old_file_path = file;
 					const std::string file_name = utils::string::replace(get_filename(file), "h2m", "hmw");
 					const std::filesystem::path new_file_path = old_file_path.parent_path() / file_name;
-					if (!utils::io::file_exists(new_file_path.string()))
+
+					try
 					{
-						std::filesystem::rename(old_file_path, new_file_path);
+						if (!utils::io::file_exists(new_file_path.string()))
+						{
+							std::filesystem::rename(old_file_path, new_file_path);
+						}
+						else
+						{
+							utils::io::remove_file(file);
+						}
 					}
-					else
+					catch (const std::exception& e)
 					{
-						utils::io::remove_file(file);
+						console::error(e.what());
+					}
+					catch (...)
+					{
 					}
 				}
 			}
@@ -720,15 +741,25 @@ namespace updater
 		{
 			const std::filesystem::path old_folder_path = h2m_folder;
 			const std::filesystem::path new_folder_path = old_folder_path.parent_path() / "hmw-mod";
-			if (!utils::io::directory_exists(new_folder_path.string()))
+
+			try
 			{
-				std::filesystem::rename(old_folder_path, new_folder_path);
+				if (!utils::io::directory_exists(new_folder_path.string()))
+				{
+					std::filesystem::rename(old_folder_path, new_folder_path);
+				}
+				else
+				{
+					utils::io::remove_directory(h2m_folder);
+				}
 			}
-			else
+			catch (const std::exception& e)
 			{
-				utils::io::remove_directory(h2m_folder);
+				console::error(e.what());
 			}
-			
+			catch (...)
+			{
+			}
 		}
 
 		const auto usermaps_folder = (this->base_ / "h2m-usermaps").string();
@@ -736,13 +767,24 @@ namespace updater
 		{
 			const std::filesystem::path old_folder_path = usermaps_folder;
 			const std::filesystem::path new_folder_path = old_folder_path.parent_path() / "hmw-usermaps";
-			if (!utils::io::directory_exists(new_folder_path.string()))
+
+			try
 			{
-				std::filesystem::rename(old_folder_path, new_folder_path);
+				if (!utils::io::directory_exists(new_folder_path.string()))
+				{
+					std::filesystem::rename(old_folder_path, new_folder_path);
+				}
+				else
+				{
+					utils::io::remove_directory(usermaps_folder);
+				}
 			}
-			else
+			catch (const std::exception& e)
 			{
-				utils::io::remove_directory(usermaps_folder);
+				console::error(e.what());
+			}
+			catch (...)
+			{
 			}
 		}
 	}

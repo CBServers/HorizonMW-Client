@@ -36,6 +36,10 @@ namespace updater
 				run();
 			}
 		}
+		catch (const std::exception& e)
+		{
+			console::error(e.what());
+		}
 		catch (...)
 		{
 
